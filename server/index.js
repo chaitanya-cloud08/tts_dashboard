@@ -7,7 +7,13 @@ import cambRouter from './routes/camb.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://client-n1z8ofeck-chaitanya-cloud08s-projects.vercel.app',
+    /\.vercel\.app$/,
+  ],
+}));
 app.use(express.json({ limit: '10mb' }));
 
 app.get('/api/health', (req, res) => {

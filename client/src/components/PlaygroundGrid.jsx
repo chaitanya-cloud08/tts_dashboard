@@ -2,6 +2,8 @@ import React, { useState, useCallback } from 'react';
 import axios from 'axios';
 import WaveformPlayer from './WaveformPlayer';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 const SARVAM_LANGUAGES = [
   { code: 'hi-IN', label: 'Hindi' },
   { code: 'ta-IN', label: 'Tamil' },
@@ -70,7 +72,7 @@ export default function PlaygroundGrid({ onResultsUpdate }) {
     setSarvamLoading(true);
     setSarvamResult(null);
     try {
-      const { data } = await axios.post('/api/sarvam/tts', {
+      const { data } = await axios.post(`${API_BASE}/api/sarvam/tts`, {
         text: sharedText, language: sarvamLang, speaker: sarvamSpeaker,
       });
       setSarvamResult(data);
@@ -89,7 +91,7 @@ export default function PlaygroundGrid({ onResultsUpdate }) {
     setCambLoading(true);
     setCambResult(null);
     try {
-      const { data } = await axios.post('/api/camb/tts', {
+      const { data } = await axios.post(`${API_BASE}/api/camb/tts`, {
         text: sharedText, voice: cambVoice, speed: cambSpeed, pitch: cambPitch, language: cambLang,
       });
       setCambResult(data);
