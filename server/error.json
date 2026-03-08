@@ -1,0 +1,7 @@
+{
+  "error": {
+    "message": "Validation Error(s):\n- speaker: Input should be 'anushka', 'abhilash', 'manisha', 'vidya', 'arya', 'karun', 'hitesh', 'aditya', 'ritu', 'priya', 'neha', 'rahul', 'pooja', 'rohan', 'simran', 'kavya', 'amit', 'dev', 'ishita', 'shreya', 'ratan', 'varun', 'manan', 'sumit', 'roopa', 'kabir', 'aayan', 'shubh', 'ashutosh', 'advait', 'amelia', 'sophia', 'anand', 'tanya', 'tarun', 'sunny', 'mani', 'gokul', 'vijay', 'shruti', 'suhani', 'mohit', 'kavitha', 'rehan', 'soham' or 'rupali'",
+    "code": "invalid_request_error",
+    "request_id": "20260307_327331bf-5817-4678-aee3-6c110802756a"
+  }
+}
