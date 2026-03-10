@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import sarvamRouter from './routes/sarvam.js';
 import cambRouter from './routes/camb.js';
+import localRouter from './routes/local.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,6 +23,7 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/sarvam', sarvamRouter);
 app.use('/api/camb', cambRouter);
+app.use('/api/local', localRouter);
 
 app.listen(PORT, () => {
   console.log(`🚀 TTS Dashboard server running on http://localhost:${PORT}`);

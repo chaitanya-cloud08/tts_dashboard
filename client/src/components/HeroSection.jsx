@@ -29,13 +29,13 @@ const platforms = [
     id: 'local',
     icon: '🧠',
     name: 'In-House AI',
-    tagline: 'Custom-trained in-house voice model',
-    description: 'Built in-house on a proprietary Hindi news audio corpus. No external API — runs fully on-premise with zero vendor lock-in. The internal baseline against which all API vendors are evaluated.',
+    tagline: 'LLM summarization + TTS pipeline',
+    description: 'Our internal TTS engine — articles are first summarized by an LLM, then converted to speech. Runs fully on-premise with English & Hindi support. The internal baseline for vendor evaluation.',
     color: '#F5A623',
     glowClass: 'local-glow',
-    strengths: ['Custom-Trained', 'On-Premise', 'Zero Vendor Lock-in', 'Hindi-First'],
-    href: '#compare',
-    ctaLabel: 'Listen to Sample →',
+    strengths: ['LLM + TTS', 'On-Premise', 'English & Hindi', 'News Corpus'],
+    href: '#playground',
+    ctaLabel: 'Open Playground →',
   },
 ];
 

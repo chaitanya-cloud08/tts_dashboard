@@ -44,10 +44,13 @@ const CAMB_LANGUAGES = [
   { code: 'ja-jp', label: 'Japanese' },
 ];
 
-const DEFAULT_TEXT = 'आज हम एक नई यात्रा पर निकल रहे हैं। प्रौद्योगिकी हमारे जीवन को बदल रही है और हम इसका स्वागत करते हैं।';
+// Preset hostIds for the in-house TTS API
+const LOCAL_HOST_PRESETS = [
+  { code: '83',   label: 'English (83)' },
+  { code: '53',   label: 'Hindi (53)' },
+];
 
-// Static file served from client/public/
-const LOCAL_AUDIO_URL = '/tts_output.wav';
+const DEFAULT_TEXT = 'आज हम एक नई यात्रा पर निकल रहे हैं। प्रौद्योगिकी हमारे जीवन को बदल रही है और हम इसका स्वागत करते हैं।';
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function PlaygroundGrid({ onResultsUpdate }) {
@@ -67,6 +70,11 @@ export default function PlaygroundGrid({ onResultsUpdate }) {
   const [cambPitch, setCambPitch]   = useState(0);
   const [cambResult, setCambResult] = useState(null);
   const [cambLoading, setCambLoading] = useState(false);
+
+  // Local / In-House state
+  const [localHostId, setLocalHostId]   = useState('83');
+  const [localResult, setLocalResult]   = useState(null);
+  const [localLoading, setLocalLoading] = useState(false);
 
   const generateSarvam = useCallback(async () => {
     setSarvamLoading(true);
@@ -106,11 +114,39 @@ export default function PlaygroundGrid({ onResultsUpdate }) {
     }
   }, [sharedText, cambVoice, cambSpeed, cambPitch, cambLang, onResultsUpdate]);
 
+  const generateLocal = useCallback(async () => {
+    setLocalLoading(true);
+    setLocalResult(null);
+    try {
+      const { data } = await axios.post(`${API_BASE}/api/local/tts`, {
+        text: sharedText, hostId: localHostId,
+      });
+      setLocalResult(data);
+      if (onResultsUpdate) onResultsUpdate({ local: data });
+      return data;
+    } catch (e) {
+      const errData = e.response?.data;
+      const errResult = {
+        error: errData?.error || e.message,
+        latencyMs: errData?.latencyMs || 0,
+        charCount: sharedText.length,
+      };
+      setLocalResult(errResult);
+      return errResult;
+    } finally {
+      setLocalLoading(false);
+    }
+  }, [sharedText, localHostId, onResultsUpdate]);
+
   const generateAll = async () => {
     setIsGeneratingAll(true);
-    const [sarvamData, cambData] = await Promise.all([generateSarvam(), generateCamb()]);
+    const [sarvamData, cambData, localData] = await Promise.all([
+      generateSarvam(),
+      generateCamb(),
+      generateLocal(),
+    ]);
     setIsGeneratingAll(false);
-    if (onResultsUpdate) onResultsUpdate({ sarvam: sarvamData, camb: cambData });
+    if (onResultsUpdate) onResultsUpdate({ sarvam: sarvamData, camb: cambData, local: localData });
   };
 
   return (
@@ -234,8 +270,60 @@ export default function PlaygroundGrid({ onResultsUpdate }) {
             }
           />
 
-          {/* Panel C — In-House AI (static showcase) */}
-          <LocalShowcasePanel />
+          {/* Panel C — In-House AI (Live Playground) */}
+          <PlaygroundPanel
+            title="In-House AI"
+            index="C"
+            color="#F5A623"
+            loading={localLoading}
+            result={localResult}
+            audioColor="#F5A623"
+            onGenerate={generateLocal}
+            badge="Internal Model"
+            controls={
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Info pills */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '4px' }}>
+                  {[
+                    { icon: '🧠', text: 'LLM + TTS' },
+                    { icon: '🔒', text: 'On-premise' },
+                    { icon: '📰', text: 'News corpus' },
+                  ].map(({ icon, text }) => (
+                    <span key={text} style={{
+                      fontFamily: 'DM Mono, monospace', fontSize: '9px', color: 'var(--white-dim)',
+                      background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                      padding: '4px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px',
+                    }}>
+                      {icon} {text}
+                    </span>
+                  ))}
+                </div>
+
+                <div>
+                  <label className="panel-label">Host ID (Publication)</label>
+                  <select className="input-dark" value={localHostId} onChange={e => setLocalHostId(e.target.value)}>
+                    {LOCAL_HOST_PRESETS.map(h => (
+                      <option key={h.code} value={h.code}>{h.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Tip */}
+                <div style={{
+                  padding: '8px 12px',
+                  background: 'rgba(245,166,35,0.06)', borderLeft: '2px solid rgba(245,166,35,0.4)',
+                  borderRadius: '0 6px 6px 0',
+                }}>
+                  <p style={{
+                    fontFamily: 'DM Mono, monospace', fontSize: '9px', color: 'var(--white-dim)',
+                    lineHeight: 1.6, margin: 0,
+                  }}>
+                    💡 Article body is summarized by LLM before TTS conversion. Longer text may take more time.
+                  </p>
+                </div>
+              </div>
+            }
+          />
 
         </div>
       </div>
@@ -243,90 +331,8 @@ export default function PlaygroundGrid({ onResultsUpdate }) {
   );
 }
 
-// ── Static In-House AI Showcase Panel ────────────────────────────────────────
-function LocalShowcasePanel() {
-  const COLOR = '#F5A623';
-
-  return (
-    <div className="glass-card" style={{ padding: '24px', borderColor: `${COLOR}22`, display: 'flex', flexDirection: 'column' }}>
-
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-        <span style={{
-          fontFamily: 'DM Mono, monospace', fontSize: '12px', fontWeight: 500,
-          color: COLOR, background: `${COLOR}20`, border: `1px solid ${COLOR}40`,
-          padding: '4px 10px', borderRadius: '6px',
-        }}>C</span>
-        <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '18px', fontWeight: 600, color: 'var(--white)' }}>
-          In-House AI
-        </h3>
-        <span style={{
-          marginLeft: 'auto',
-          fontFamily: 'DM Mono, monospace', fontSize: '9px', letterSpacing: '0.12em',
-          textTransform: 'uppercase', color: COLOR,
-          background: `${COLOR}15`, border: `1px solid ${COLOR}35`,
-          padding: '3px 8px', borderRadius: '20px', whiteSpace: 'nowrap',
-        }}>
-          Internal Model
-        </span>
-      </div>
-
-      {/* Info pills */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-        {[
-          { icon: '🧠', text: 'Custom-trained' },
-          { icon: '🌐', text: 'Hindi (hi-IN)' },
-          { icon: '🔒', text: 'On-premise' },
-        ].map(({ icon, text }) => (
-          <span key={text} style={{
-            fontFamily: 'DM Mono, monospace', fontSize: '10px', color: 'var(--white-dim)',
-            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-            padding: '5px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '5px',
-          }}>
-            {icon} {text}
-          </span>
-        ))}
-      </div>
-
-      {/* Description */}
-      <p style={{
-        fontFamily: 'DM Mono, monospace', fontSize: '11px', color: 'var(--white-dim)',
-        lineHeight: 1.7, marginBottom: '20px',
-        padding: '12px 14px',
-        background: `${COLOR}08`, borderLeft: `2px solid ${COLOR}50`,
-        borderRadius: '0 6px 6px 0',
-      }}>
-        Trained in-house on a proprietary Hindi news audio corpus. No external API — audio generated offline and served here as a reference sample.
-      </p>
-
-      {/* Waveform player — hardcoded to public/tts_output.wav */}
-      <div style={{ flex: 1 }}>
-        <style>{`.panel-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--white-dim); text-transform: uppercase; letter-spacing: 0.1em; display: block; margin-bottom: 6px; }`}</style>
-        <WaveformPlayer audioUrl={LOCAL_AUDIO_URL} color={COLOR} label="In-House AI Output" />
-      </div>
-
-      {/* Static stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '16px' }}>
-        <div className="stat-box">
-          <div className="stat-value" style={{ color: COLOR, fontSize: '14px' }}>Offline</div>
-          <div className="stat-label">Generation</div>
-        </div>
-        <div className="stat-box">
-          <div className="stat-value" style={{ color: COLOR, fontSize: '14px' }}>Custom</div>
-          <div className="stat-label">Voice model</div>
-        </div>
-        <div className="stat-box">
-          <div className="stat-value" style={{ color: COLOR, fontSize: '14px' }}>WAV</div>
-          <div className="stat-label">Format</div>
-        </div>
-      </div>
-
-    </div>
-  );
-}
-
-// ── Reusable Playground Panel (Sarvam / CAMB) ────────────────────────────────
-function PlaygroundPanel({ title, index, color, loading, result, onGenerate, controls, audioColor }) {
+// ── Reusable Playground Panel (Sarvam / CAMB / Local) ────────────────────────
+function PlaygroundPanel({ title, index, color, loading, result, onGenerate, controls, audioColor, badge }) {
   return (
     <div className="glass-card" style={{ padding: '24px', borderColor: `${color}22` }}>
 
@@ -342,12 +348,24 @@ function PlaygroundPanel({ title, index, color, loading, result, onGenerate, con
             {title}
           </h3>
         </div>
-        {loading && (
-          <div className="spin" style={{
-            width: '20px', height: '20px', borderRadius: '50%',
-            border: `2px solid ${color}30`, borderTopColor: color,
-          }} />
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {badge && (
+            <span style={{
+              fontFamily: 'DM Mono, monospace', fontSize: '9px', letterSpacing: '0.12em',
+              textTransform: 'uppercase', color,
+              background: `${color}15`, border: `1px solid ${color}35`,
+              padding: '3px 8px', borderRadius: '20px', whiteSpace: 'nowrap',
+            }}>
+              {badge}
+            </span>
+          )}
+          {loading && (
+            <div className="spin" style={{
+              width: '20px', height: '20px', borderRadius: '50%',
+              border: `2px solid ${color}30`, borderTopColor: color,
+            }} />
+          )}
+        </div>
       </div>
 
       {/* Controls */}
@@ -399,6 +417,18 @@ function PlaygroundPanel({ title, index, color, loading, result, onGenerate, con
             </div>
             <div className="stat-label">sample rate</div>
           </div>
+        </div>
+      )}
+
+      {/* Error display */}
+      {result?.error && (
+        <div style={{
+          marginTop: '12px', padding: '8px 12px', borderRadius: '6px',
+          background: 'rgba(255, 107, 107, 0.08)', border: '1px solid rgba(255, 107, 107, 0.2)',
+        }}>
+          <p style={{ fontFamily: 'DM Mono, monospace', fontSize: '10px', color: '#ff6b6b', margin: 0 }}>
+            ⚠ {result.error}
+          </p>
         </div>
       )}
 
