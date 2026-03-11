@@ -9,12 +9,13 @@ const PLATFORMS = [
 
 export default function AudioComparisonGrid({ results }) {
   const [notes, setNotes] = useState({ sarvam: '', camb: '', local: '' });
-  const [reGenerating, setReGenerating] = useState(false);
 
   const getResult = (id) => results?.[id] || null;
 
   // Local always has audio (static file), so the grid is never fully empty
   const hasAnyResult = true;
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  const sampleUrl = `${baseUrl}${baseUrl.endsWith('/') ? '' : '/'}tts_output.wav`;
 
   return (
     <section id="compare" style={{ padding: '80px 0', position: 'relative' }}>
@@ -47,6 +48,8 @@ export default function AudioComparisonGrid({ results }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
           {PLATFORMS.map(p => {
             const r = getResult(p.id);
+            const isLocal = p.id === 'local';
+            const hasLiveAudio = !!r?.audioBase64;
             return (
               <div key={p.id} className="glass-card" style={{ overflow: 'hidden', borderColor: `${p.color}22` }}>
 
@@ -62,8 +65,8 @@ export default function AudioComparisonGrid({ results }) {
                       {p.name}
                     </h3>
                     <span style={{ fontFamily: 'DM Mono, monospace', fontSize: '10px', color: p.color, letterSpacing: '0.1em' }}>
-                      {p.id === 'local'
-                        ? 'SAMPLE READY'
+                      {isLocal
+                        ? (hasLiveAudio ? 'RESULT READY' : r?.error ? 'ERROR' : r ? 'NO AUDIO' : 'SAMPLE READY')
                         : r?.mock ? 'MOCK MODE' : r ? 'RESULT READY' : 'AWAITING GENERATION'}
                     </span>
                   </div>
@@ -73,9 +76,10 @@ export default function AudioComparisonGrid({ results }) {
                   {/* Row 1: Audio Player */}
                   <div style={{ marginBottom: '20px' }}>
                     <SectionLabel>Audio Output</SectionLabel>
-                    {p.id === 'local' ? (
+                    {isLocal ? (
                       <WaveformPlayer
-                        audioUrl="/tts_output.wav"
+                        audioBase64={r?.audioBase64}
+                        audioUrl={hasLiveAudio || r ? undefined : sampleUrl}
                         color={p.color}
                         label="In-House AI Output"
                       />
@@ -92,20 +96,33 @@ export default function AudioComparisonGrid({ results }) {
                   <div style={{ marginBottom: '20px' }}>
                     <SectionLabel>Quality Metadata</SectionLabel>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      <MetaStat label="Latency"    value={p.id === 'local' ? 'Offline'    : r ? `${r.latencyMs}ms` : '—'} color={p.color} />
-                      <MetaStat label="Characters" value={p.id === 'local' ? '—'          : r?.charCount ?? '—'}           color={p.color} />
+                      <MetaStat label="Latency" value={isLocal ? (hasLiveAudio ? `${r.latencyMs}ms` : 'Offline') : r ? `${r.latencyMs}ms` : '—'} color={p.color} />
+                      <MetaStat label="Characters" value={isLocal ? (hasLiveAudio ? (r?.charCount ?? '—') : '—') : r?.charCount ?? '—'} color={p.color} />
                       <MetaStat
                         label="Sample Rate"
-                        value={p.id === 'local' ? '22 kHz' : r?.sampleRate ? `${(r.sampleRate / 1000).toFixed(0)}kHz` : '—'}
+                        value={isLocal
+                          ? (hasLiveAudio ? (r?.sampleRate ? `${(r.sampleRate / 1000).toFixed(0)}kHz` : '—') : '22 kHz')
+                          : r?.sampleRate ? `${(r.sampleRate / 1000).toFixed(0)}kHz` : '—'}
                         color={p.color}
                       />
                       <MetaStat
                         label="Status"
-                        value={p.id === 'local' ? 'On-Premise' : r?.mock ? 'Mock' : r ? 'Live' : 'Pending'}
-                        color={p.id === 'local' ? p.color : r?.mock ? 'var(--gold)' : r ? 'var(--green)' : 'var(--white-dim)'}
+                        value={isLocal ? (hasLiveAudio ? 'Live' : r?.error ? 'Error' : r ? 'No audio' : 'Sample') : r?.mock ? 'Mock' : r ? 'Live' : 'Pending'}
+                        color={isLocal ? (hasLiveAudio ? 'var(--green)' : r?.error ? '#ff6b6b' : p.color) : r?.mock ? 'var(--gold)' : r ? 'var(--green)' : 'var(--white-dim)'}
                       />
                     </div>
                   </div>
+
+                  {isLocal && r?.error && (
+                    <div style={{
+                      marginTop: '-8px', marginBottom: '20px', padding: '10px 12px', borderRadius: '8px',
+                      background: 'rgba(255, 107, 107, 0.08)', border: '1px solid rgba(255, 107, 107, 0.2)',
+                    }}>
+                      <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '10px', color: '#ff6b6b' }}>
+                        {r.error}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Row 4: Notes */}
                   <div>

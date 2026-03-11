@@ -8,16 +8,65 @@ export default function WaveformPlayer({ audioBase64, audioUrl, color = '#C9A84C
   const [currentTime, setCurrentTime] = useState(0);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState(null);
+  const [audioSrc, setAudioSrc] = useState(null);
 
-  const getAudioSrc = () => {
-    if (audioUrl) return audioUrl;
-    if (audioBase64) return `data:audio/wav;base64,${audioBase64}`;
-    return null;
+  const inferMimeTypeFromBase64 = (b64) => {
+    const prefix = (b64 || '').slice(0, 12);
+    if (prefix.startsWith('UklGR')) return 'audio/wav'; // "RIFF"
+    if (prefix.startsWith('SUQz') || prefix.startsWith('/+MY')) return 'audio/mpeg'; // "ID3" / mp3 frame sync
+    if (prefix.startsWith('T2dnUw')) return 'audio/ogg'; // "OggS"
+    return 'audio/wav';
+  };
+
+  const base64ToBlob = (b64, mimeType) => {
+    const byteCharacters = atob(b64);
+    const sliceSize = 1024 * 512;
+    const byteArrays = [];
+
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+      const slice = byteCharacters.slice(offset, offset + sliceSize);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i += 1) byteNumbers[i] = slice.charCodeAt(i);
+      byteArrays.push(new Uint8Array(byteNumbers));
+    }
+
+    return new Blob(byteArrays, { type: mimeType });
   };
 
   useEffect(() => {
-    const src = getAudioSrc();
-    if (!src || !waveRef.current) return;
+    setError(null);
+    setIsReady(false);
+    setDuration(0);
+    setCurrentTime(0);
+
+    if (audioUrl) {
+      setAudioSrc(audioUrl);
+      return undefined;
+    }
+
+    if (!audioBase64) {
+      setAudioSrc(null);
+      return undefined;
+    }
+
+    let objectUrl;
+    try {
+      const mimeType = inferMimeTypeFromBase64(audioBase64);
+      const blob = base64ToBlob(audioBase64, mimeType);
+      objectUrl = URL.createObjectURL(blob);
+      setAudioSrc(objectUrl);
+    } catch {
+      setAudioSrc(null);
+      setError('Audio decode error');
+    }
+
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [audioBase64, audioUrl]);
+
+  useEffect(() => {
+    if (!audioSrc || !waveRef.current) return;
 
     let ws;
 
@@ -47,16 +96,16 @@ export default function WaveformPlayer({ audioBase64, audioUrl, color = '#C9A84C
       ws.on('play', () => setIsPlaying(true));
       ws.on('pause', () => setIsPlaying(false));
       ws.on('finish', () => setIsPlaying(false));
-      ws.on('error', (e) => setError('Audio load error'));
+      ws.on('error', (e) => setError(typeof e === 'string' && e.trim() ? e : 'Audio load error'));
 
-      ws.load(src);
+      ws.load(audioSrc);
       wavesurferRef.current = ws;
     }).catch(() => setError('WaveSurfer unavailable'));
 
     return () => {
       if (ws) ws.destroy();
     };
-  }, [audioBase64, audioUrl, color]);
+  }, [audioSrc, color]);
 
   const togglePlay = () => {
     if (wavesurferRef.current && isReady) {
@@ -70,7 +119,7 @@ export default function WaveformPlayer({ audioBase64, audioUrl, color = '#C9A84C
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const src = getAudioSrc();
+  const src = audioSrc;
 
   if (!src) {
     return (
@@ -83,7 +132,7 @@ export default function WaveformPlayer({ audioBase64, audioUrl, color = '#C9A84C
   }
 
   return (
-    <div className="waveform-container" style={{ padding: '16px' }}>
+    <div className="waveform-container" style={{ padding: '16px' }} title={label || undefined}>
       {/* Waveform */}
       <div ref={waveRef} style={{ minHeight: '60px', marginBottom: '12px' }} />
 

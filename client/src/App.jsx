@@ -4,6 +4,7 @@ import HeroSection from './components/HeroSection';
 import PlaygroundGrid from './components/PlaygroundGrid';
 import AudioComparisonGrid from './components/AudioComparisonGrid';
 import CostCalculator from './components/CostCalculator';
+import SelectionGuide from './components/SelectionGuide';
 
 export default function App() {
   const [results, setResults] = useState({ sarvam: null, camb: null, local: null });
@@ -61,6 +62,8 @@ export default function App() {
         <AudioComparisonGrid results={results} />
         <div className="gold-divider" style={{ maxWidth: '1400px', margin: '0 auto' }} />
         <CostCalculator />
+        <div className="gold-divider" style={{ maxWidth: '1400px', margin: '0 auto' }} />
+        <SelectionGuide />
       </main>
     </div>
   );

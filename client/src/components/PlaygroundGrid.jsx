@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import WaveformPlayer from './WaveformPlayer';
 
@@ -89,6 +89,7 @@ export default function PlaygroundGrid({ onResultsUpdate }) {
     } catch (e) {
       const errResult = { error: e.message, latencyMs: 0, charCount: sharedText.length };
       setSarvamResult(errResult);
+      if (onResultsUpdate) onResultsUpdate({ sarvam: errResult });
       return errResult;
     } finally {
       setSarvamLoading(false);
@@ -108,6 +109,7 @@ export default function PlaygroundGrid({ onResultsUpdate }) {
     } catch (e) {
       const errResult = { error: e.message, latencyMs: 0, charCount: sharedText.length };
       setCambResult(errResult);
+      if (onResultsUpdate) onResultsUpdate({ camb: errResult });
       return errResult;
     } finally {
       setCambLoading(false);
@@ -132,13 +134,14 @@ export default function PlaygroundGrid({ onResultsUpdate }) {
         charCount: sharedText.length,
       };
       setLocalResult(errResult);
+      if (onResultsUpdate) onResultsUpdate({ local: errResult });
       return errResult;
     } finally {
       setLocalLoading(false);
     }
   }, [sharedText, localHostId, onResultsUpdate]);
 
-  const generateAll = async () => {
+  const generateAll = useCallback(async () => {
     setIsGeneratingAll(true);
     const [sarvamData, cambData, localData] = await Promise.all([
       generateSarvam(),
@@ -147,7 +150,14 @@ export default function PlaygroundGrid({ onResultsUpdate }) {
     ]);
     setIsGeneratingAll(false);
     if (onResultsUpdate) onResultsUpdate({ sarvam: sarvamData, camb: cambData, local: localData });
-  };
+  }, [generateSarvam, generateCamb, generateLocal, onResultsUpdate]);
+
+  // "Re-generate All" button in comparison grid dispatches this event.
+  useEffect(() => {
+    const handler = () => generateAll();
+    window.addEventListener('regenerate-all', handler);
+    return () => window.removeEventListener('regenerate-all', handler);
+  }, [generateAll]);
 
   return (
     <section id="playground" style={{ padding: '80px 0', position: 'relative' }}>
