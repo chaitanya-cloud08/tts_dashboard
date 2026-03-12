@@ -6,7 +6,7 @@ const router = express.Router();
 const LOCAL_TTS_BASE = 'http://qaaiml.timesinternet.in';
 
 router.post('/tts', async (req, res) => {
-  const { text, hostId = '83' } = req.body;
+  const { text, hostId = '53' } = req.body;
 
   if (!text) {
     return res.status(400).json({ error: 'Text (body) is required' });

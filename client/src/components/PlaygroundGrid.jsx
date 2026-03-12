@@ -65,14 +65,14 @@ export default function PlaygroundGrid({ onResultsUpdate }) {
 
   // CAMB state
   const [cambVoice, setCambVoice]   = useState(147320);
-  const [cambLang, setCambLang]     = useState('en-us');
+  const [cambLang, setCambLang]     = useState('hi-in');
   const [cambSpeed, setCambSpeed]   = useState(1.0);
   const [cambPitch, setCambPitch]   = useState(0);
   const [cambResult, setCambResult] = useState(null);
   const [cambLoading, setCambLoading] = useState(false);
 
   // Local / In-House state
-  const [localHostId, setLocalHostId]   = useState('83');
+  const [localHostId, setLocalHostId]   = useState('53');
   const [localResult, setLocalResult]   = useState(null);
   const [localLoading, setLocalLoading] = useState(false);
 
